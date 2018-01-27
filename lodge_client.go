@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net"
 	"time"
   zmq "github.com/zeromq/goczmq"
 )
@@ -18,8 +17,6 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
   tcpClient()
-  //udpClient()
-
 }
 
 func tcpClient() {
@@ -42,44 +39,12 @@ func tcpClient() {
   }
 }
 
-func udpClient() {
-	serverAddr, err := net.ResolveUDPAddr("udp", "localhost:54321")
-	fatalError(err)
-
-	clientAddr, err := net.ResolveUDPAddr("udp", "localhost:54300")
-	fatalError(err)
-
-	conn, err := net.DialUDP("udp", clientAddr, serverAddr)
-	fatalError(err)
-
-	defer conn.Close()
-
-  i := 0
-	for {
-
-    data := fmt.Sprintf("%4d:%v", i, createData())
-		send(conn, serverAddr, data)
-
-    i++
-
-		time.Sleep(time.Duration(300) * time.Microsecond)
-	}
-}
-
 func createData() string {
 	latLng := latlng()
   carId := fmt.Sprintf("%04d", rand.Intn(1000))
   status := "empty"
 
 	return fmt.Sprintf("0001:%v:%v:%v:%v", carId, status, latLng.Lat, latLng.Lng)
-}
-
-func send(conn net.Conn, serverAddr *net.UDPAddr, data string) {
-	buffer := []byte(data)
-	_, err := conn.Write(buffer)
-	fatalError(err)
-
-	log.Printf("Send: [%v]: %v\n", serverAddr, data)
 }
 
 func fatalError(err error) {
