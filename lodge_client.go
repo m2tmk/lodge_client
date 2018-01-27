@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"time"
+  zmq "github.com/zeromq/goczmq"
 )
 
 type LatLng struct {
@@ -16,6 +17,32 @@ type LatLng struct {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+  tcpClient()
+  //udpClient()
+
+}
+
+func tcpClient() {
+  req, _ := zmq.NewReq("tcp://localhost:54321")
+  defer req.Destroy()
+
+  log.Println("Req created and bound.")
+
+  i := 0
+  for {
+    data := fmt.Sprintf("%4d:%v", i, createData())
+
+    req.SendFrame([]byte(data), 0)
+
+    reply, _ := req.RecvMessage()
+	  log.Printf("Reply: %v\n", string(reply[0]))
+
+    i++
+		time.Sleep(time.Duration(1) * time.Microsecond)
+  }
+}
+
+func udpClient() {
 	serverAddr, err := net.ResolveUDPAddr("udp", "localhost:54321")
 	fatalError(err)
 
@@ -27,18 +54,32 @@ func main() {
 
 	defer conn.Close()
 
+  i := 0
 	for {
-		latLng := latlng()
-		msg := fmt.Sprintf("%v,%v", latLng.Lat, latLng.Lng)
 
-		buffer := []byte(msg)
-		_, err := conn.Write(buffer)
-		fatalError(err)
+    data := fmt.Sprintf("%4d:%v", i, createData())
+		send(conn, serverAddr, data)
 
-		log.Printf("Send: [%v]: %v\n", serverAddr, msg)
+    i++
 
-		time.Sleep(time.Duration(300) * time.Millisecond)
+		time.Sleep(time.Duration(300) * time.Microsecond)
 	}
+}
+
+func createData() string {
+	latLng := latlng()
+  carId := fmt.Sprintf("%04d", rand.Intn(1000))
+  status := "empty"
+
+	return fmt.Sprintf("0001:%v:%v:%v:%v", carId, status, latLng.Lat, latLng.Lng)
+}
+
+func send(conn net.Conn, serverAddr *net.UDPAddr, data string) {
+	buffer := []byte(data)
+	_, err := conn.Write(buffer)
+	fatalError(err)
+
+	log.Printf("Send: [%v]: %v\n", serverAddr, data)
 }
 
 func fatalError(err error) {
